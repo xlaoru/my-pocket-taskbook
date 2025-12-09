@@ -106,6 +106,14 @@ func main() {
 					}
 				}
 			}
+
+			if parts[1] == "current" {
+				if len(parts) == 2 {
+					if r.Method == http.MethodGet {
+						localTasksHandler.GetAllCurrent(w, r)
+					}
+				}
+			}
 		}
 	})
 

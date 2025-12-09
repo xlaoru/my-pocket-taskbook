@@ -14,7 +14,7 @@ func NewRepo(s *db.PostgresStorage) *PostgresRepository {
 	return &PostgresRepository{s}
 }
 
-func (r *PostgresRepository) GetAll(ctx context.Context) ([]models.Task, error) { // ! Limits by day
+func (r *PostgresRepository) GetAll(ctx context.Context) ([]models.Task, error) {
 	rows, err := r.Storage.Pool.Query(
 		ctx,
 		`SELECT id, title, body, status, type, created_at FROM tasks WHERE type=$1`,
@@ -44,7 +44,7 @@ func (r *PostgresRepository) GetAll(ctx context.Context) ([]models.Task, error) 
 	return tasks, nil
 }
 
-func (r *PostgresRepository) GetByID(ctx context.Context, id int) (*models.Task, error) { // ! Limits by day
+func (r *PostgresRepository) GetByID(ctx context.Context, id int) (*models.Task, error) {
 	var task models.Task
 
 	err := r.Storage.Pool.QueryRow(
@@ -58,6 +58,42 @@ func (r *PostgresRepository) GetByID(ctx context.Context, id int) (*models.Task,
 	}
 
 	return &task, nil
+}
+
+func (r *PostgresRepository) GetAllCurrent(ctx context.Context) ([]models.Task, error) {
+	rows, err := r.Storage.Pool.Query(
+		ctx,
+		`SELECT id, title, body, status, type, created_at 
+			FROM tasks 
+			WHERE type = $1
+			AND (
+				created_at::date = CURRENT_DATE
+				OR status NOT IN ('completed', 'canceled')
+			);`,
+		"local",
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	tasks := []models.Task{}
+
+	for rows.Next() {
+		var task models.Task
+
+		err := rows.Scan(&task.ID, &task.Title, &task.Body, &task.Status, &task.Type, &task.CreatedAt)
+
+		if err != nil {
+			return nil, err
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	return tasks, nil
 }
 
 func (r *PostgresRepository) Create(ctx context.Context, t *models.Task) (*models.Task, error) {

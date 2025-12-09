@@ -8,6 +8,7 @@ import (
 type Repository interface {
 	GetAll(ctx context.Context) ([]models.Task, error)
 	GetByID(ctx context.Context, id int) (*models.Task, error)
+	GetAllCurrent(ctx context.Context) ([]models.Task, error)
 	Create(ctx context.Context, t *models.Task) (*models.Task, error)
 	Edit(ctx context.Context, t *models.Task, id int) (*models.Task, error)
 	ChangeStatus(ctx context.Context, id int, status string) (*models.Task, error)
@@ -27,6 +28,10 @@ func (s *Service) GetAll(ctx context.Context) ([]models.Task, error) {
 
 func (s *Service) GetByID(ctx context.Context, id int) (*models.Task, error) {
 	return s.repo.GetByID(ctx, id)
+}
+
+func (s *Service) GetAllCurrent(ctx context.Context) ([]models.Task, error) {
+	return s.repo.GetAllCurrent(ctx)
 }
 
 func (s *Service) Create(ctx context.Context, t *models.Task) (*models.Task, error) {

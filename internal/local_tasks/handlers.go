@@ -58,6 +58,22 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) GetAllCurrent(w http.ResponseWriter, r *http.Request) {
+	currentTasks, err := h.service.GetAllCurrent(r.Context())
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{
+		"message":       "current tasks fetched successfully",
+		"current tasks": currentTasks,
+	})
+}
+
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var localTask models.Task
 
