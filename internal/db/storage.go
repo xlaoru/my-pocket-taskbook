@@ -30,5 +30,17 @@ func New() (*PostgresStorage, error) {
 }
 
 func (s *PostgresStorage) Migrate() error {
-	return nil
+	_, err := s.Pool.Exec(
+		context.Background(),
+		`CREATE TABLE IF NOT EXISTS tasks (
+			id SERIAL PRIMARY KEY,
+			title TEXT NOT NULL,
+			body TEXT,
+			status TEXT NOT NULL,
+			type TEXT NOT NULL,
+			created_at Date NOT NULL
+		);`,
+	)
+
+	return err
 }
