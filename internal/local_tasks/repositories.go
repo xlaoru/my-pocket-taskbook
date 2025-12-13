@@ -17,7 +17,9 @@ func NewRepo(s *db.PostgresStorage) *PostgresRepository {
 func (r *PostgresRepository) GetAll(ctx context.Context) ([]models.Task, error) {
 	rows, err := r.Storage.Pool.Query(
 		ctx,
-		`SELECT id, title, body, status, type, created_at FROM tasks WHERE type=$1`,
+		`SELECT id, title, body, status, type, created_at, updated_at 
+		FROM tasks 
+		WHERE type=$1`,
 		"local",
 	)
 
@@ -32,7 +34,7 @@ func (r *PostgresRepository) GetAll(ctx context.Context) ([]models.Task, error) 
 	for rows.Next() {
 		var task models.Task
 
-		err := rows.Scan(&task.ID, &task.Title, &task.Body, &task.Status, &task.Type, &task.CreatedAt)
+		err := rows.Scan(&task.ID, &task.Title, &task.Body, &task.Status, &task.Type, &task.CreatedAt, &task.UpdatedAt)
 
 		if err != nil {
 			return nil, err
@@ -49,9 +51,11 @@ func (r *PostgresRepository) GetByID(ctx context.Context, id int) (*models.Task,
 
 	err := r.Storage.Pool.QueryRow(
 		ctx,
-		`SELECT id, title, body, status, type, created_at FROM tasks WHERE type=$1 AND id=$2`,
+		`SELECT id, title, body, status, type, created_at, updated_at
+		FROM tasks 
+		WHERE type=$1 AND id=$2`,
 		"local", id,
-	).Scan(&task.ID, &task.Title, &task.Body, &task.Status, &task.Type, &task.CreatedAt)
+	).Scan(&task.ID, &task.Title, &task.Body, &task.Status, &task.Type, &task.CreatedAt, &task.UpdatedAt)
 
 	if err != nil {
 		return nil, err
@@ -63,22 +67,17 @@ func (r *PostgresRepository) GetByID(ctx context.Context, id int) (*models.Task,
 func (r *PostgresRepository) GetAllCurrent(ctx context.Context) ([]models.Task, error) {
 	rows, err := r.Storage.Pool.Query(
 		ctx,
-		`SELECT id, title, body, status, type, created_at
-			FROM tasks
-			WHERE 
-				(
-					type = $1
-					AND (
-						created_at::date = CURRENT_DATE
-						OR status NOT IN ('completed', 'canceled')
+		`SELECT id, title, body, status, type, created_at, updated_at 
+		FROM tasks
+		WHERE (
+			type = 'local' AND (
+				status NOT IN ('completed', 'canceled') OR (
+						status IN ('completed', 'canceled') AND updated_at::date = CURRENT_DATE
 					)
 				)
-				OR (
-					type = $2
-					AND status <> 'retired'
-				);
-		`,
-		"local", "routine",
+			) OR (
+				type = 'routine' AND status <> 'retired'
+			);`,
 	)
 
 	if err != nil {
@@ -92,7 +91,7 @@ func (r *PostgresRepository) GetAllCurrent(ctx context.Context) ([]models.Task, 
 	for rows.Next() {
 		var task models.Task
 
-		err := rows.Scan(&task.ID, &task.Title, &task.Body, &task.Status, &task.Type, &task.CreatedAt)
+		err := rows.Scan(&task.ID, &task.Title, &task.Body, &task.Status, &task.Type, &task.CreatedAt, &task.UpdatedAt)
 
 		if err != nil {
 			return nil, err
@@ -107,11 +106,11 @@ func (r *PostgresRepository) GetAllCurrent(ctx context.Context) ([]models.Task, 
 func (r *PostgresRepository) Create(ctx context.Context, t *models.Task) (*models.Task, error) {
 	err := r.Storage.Pool.QueryRow(
 		ctx,
-		`INSERT INTO tasks(title, body, status, type, created_at)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, title, body, status, type, created_at`,
-		t.Title, t.Body, "active", "local", t.CreatedAt,
-	).Scan(&t.ID, &t.Title, &t.Body, &t.Status, &t.Type, &t.CreatedAt)
+		`INSERT INTO tasks(title, body, status, type)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, title, body, status, type, created_at, updated_at`,
+		t.Title, t.Body, "active", "local",
+	).Scan(&t.ID, &t.Title, &t.Body, &t.Status, &t.Type, &t.CreatedAt, &t.UpdatedAt)
 
 	if err != nil {
 		return nil, err
@@ -126,9 +125,9 @@ func (r *PostgresRepository) Edit(ctx context.Context, t *models.Task, id int) (
 		`UPDATE tasks
 		SET title = $1, body = $2
 		WHERE id = $3 AND type=$4
-		RETURNING id, title, body, status, type, created_at`,
+		RETURNING id, title, body, status, type, created_at, updated_at`,
 		t.Title, t.Body, id, "local",
-	).Scan(&t.ID, &t.Title, &t.Body, &t.Status, &t.Type, &t.CreatedAt)
+	).Scan(&t.ID, &t.Title, &t.Body, &t.Status, &t.Type, &t.CreatedAt, &t.UpdatedAt)
 
 	if err != nil {
 		return nil, err
@@ -143,11 +142,11 @@ func (r *PostgresRepository) ChangeStatus(ctx context.Context, id int, status st
 	err := r.Storage.Pool.QueryRow(
 		ctx,
 		`UPDATE tasks
-		SET status = $1
+		SET status = $1, updated_at = NOW()
 		WHERE id = $2 AND type=$3
-		RETURNING id, title, body, status, type, created_at`,
+		RETURNING id, title, body, status, type, created_at, updated_at`,
 		status, id, "local",
-	).Scan(&task.ID, &task.Title, &task.Body, &task.Status, &task.Type, &task.CreatedAt)
+	).Scan(&task.ID, &task.Title, &task.Body, &task.Status, &task.Type, &task.CreatedAt, &task.UpdatedAt)
 
 	if err != nil {
 		return nil, err

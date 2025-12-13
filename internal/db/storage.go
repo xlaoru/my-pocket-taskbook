@@ -38,7 +38,8 @@ func (s *PostgresStorage) Migrate() error {
 			body TEXT,
 			status TEXT NOT NULL,
 			type TEXT NOT NULL,
-			created_at Date NOT NULL
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    		updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 		);`,
 	)
 
