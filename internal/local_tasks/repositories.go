@@ -76,7 +76,13 @@ func (r *PostgresRepository) GetAllCurrent(ctx context.Context) ([]models.Task, 
 					)
 				)
 			) OR (
-				type = 'routine' AND status <> 'retired'
+				type = 'routine' AND (
+					status <> 'retired'
+					OR (
+						status = 'retired'
+						AND updated_at::date = CURRENT_DATE
+					)
+				)
 			);`,
 	)
 
